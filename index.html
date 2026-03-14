@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>บัญชีรายรับรายจ่าย</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE8;
+    --border: #E2DDD4;
+    --border2: #CBC6BB;
+    --text: #1A1814;
+    --text2: #6B6660;
+    --text3: #9E9892;
+    --income: #1D9E75;
+    --income-bg: #E1F5EE;
+    --income-text: #0F6E56;
+    --expense: #D85A30;
+    --expense-bg: #FAECE7;
+    --expense-text: #993C1D;
+    --accent: #533AB7;
+    --accent-light: #EEEDFE;
+    --accent-text: #3C3489;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  [data-theme="dark"] {
+    --bg: #141210;
+    --surface: #1E1C18;
+    --surface2: #28251F;
+    --border: #35312A;
+    --border2: #4A4540;
+    --text: #F0EDE8;
+    --text2: #A09890;
+    --text3: #6B6560;
+    --income-bg: #0A2E20;
+    --income-text: #5DCAA5;
+    --expense-bg: #2E1208;
+    --expense-text: #F0997B;
+    --accent: #7F77DD;
+    --accent-light: #1C1840;
+    --accent-text: #AFA9EC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ─── LAYOUT ─── */
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* ─── TOPBAR ─── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px; background: var(--accent);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+  .logo-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 12px; color: var(--text2); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .year-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--text2);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 12px;
+  }
+  .btn-theme {
+    width: 34px; height: 34px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--surface);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; transition: background 0.15s;
+  }
+  .btn-theme:hover { background: var(--surface2); }
+
+  /* ─── TABS ─── */
+  .tabs {
+    display: flex; gap: 2px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 3px; margin-bottom: 24px; width: fit-content;
+  }
+  .tab {
+    padding: 7px 18px; border-radius: 8px; border: none;
+    background: transparent; font-size: 13px; cursor: pointer;
+    color: var(--text2); font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-weight: 400; transition: all 0.15s;
+  }
+  .tab.active {
+    background: var(--surface); color: var(--text); font-weight: 500;
+    border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  /* ─── SUMMARY CARDS ─── */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  @media(max-width:600px){ .summary-grid{ grid-template-columns: repeat(2,1fr); } }
+  .summary-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 18px;
+    position: relative; overflow: hidden;
+  }
+  .summary-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .summary-card.s-income::before { background: var(--income); }
+  .summary-card.s-expense::before { background: var(--expense); }
+  .summary-card.s-net::before { background: var(--text2); }
+  .summary-card.s-tax::before { background: var(--accent); }
+  .s-label { font-size: 11px; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .s-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px; font-weight: 500; letter-spacing: -0.5px;
+  }
+  .s-income .s-value { color: var(--income); }
+  .s-expense .s-value { color: var(--expense); }
+  .s-tax .s-value { color: var(--accent); }
+
+  /* ─── FORM ─── */
+  .form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px;
+  }
+  .form-card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; }
+  .form-row {
+    display: grid; grid-template-columns: 2fr 1.2fr 1fr auto auto;
+    gap: 8px; align-items: end;
+  }
+  @media(max-width:640px){ .form-row{ grid-template-columns: 1fr 1fr; } }
+  .fg { display: flex; flex-direction: column; gap: 5px; }
+  .fg label { font-size: 11px; color: var(--text2); font-weight: 500; letter-spacing: 0.3px; }
+  .fg input, .fg select {
+    height: 38px; padding: 0 12px;
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 13px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .fg input:focus, .fg select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(83,58,183,0.12);
+  }
+  .fg select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    padding-right: 32px;
+  }
+  .btn-add {
+    height: 38px; padding: 0 18px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-add:hover { background: var(--accent-text); }
+  .btn-export {
+    height: 38px; padding: 0 14px;
+    background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 13px;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-export:hover { background: var(--border); }
+
+  /* ─── TABLE CARD ─── */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px;
+  }
+  .table-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .table-title { font-size: 13px; font-weight: 500; }
+  .filter-pills { display: flex; gap: 4px; }
+  .pill {
+    padding: 4px 12px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    font-size: 11px; cursor: pointer; color: var(--text2);
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    transition: all 0.12s;
+  }
+  .pill.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .search-input {
+    height: 30px; padding: 0 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans Thai', sans-serif; font-size: 12px; outline: none;
+    width: 160px;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 9px 18px; text-align: left; font-size: 11px;
+    color: var(--text3); font-weight: 500; letter-spacing: 0.5px;
+    text-transform: uppercase; background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 18px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .td-mono { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .badge {
+    display: inline-block; padding: 2px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+  .badge.income { background: var(--income-bg); color: var(--income-text); }
+  .badge.expense { background: var(--expense-bg); color: var(--expense-text); }
+  .category-tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 11px; background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 16px; padding: 2px 6px;
+    border-radius: 4px; transition: color 0.12s, background 0.12s;
+  }
+  .btn-del:hover { color: var(--expense); background: var(--expense-bg); }
+  .empty-row td {
+    text-align: center; padding: 40px; color: var(--text3); font-size: 13px;
+  }
+
+  /* ─── TAX SECTION ─── */
+  .tax-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+  @media(max-width:640px){ .tax-grid{ grid-template-columns: 1fr; } }
+  .tax-input-card, .tax-result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px;
+  }
+  .card-title { font-size: 13px; font-weight: 500; margin-bottom: 16px; color: var(--text2); }
+  .tax-field { margin-bottom: 14px; }
+  .tax-field label { display: block; font-size: 11px; color: var(--text2); font-weight: 500; margin-bottom: 5px; }
+  .tax-field input {
+    width: 100%; height: 38px; padding: 0 12px;
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .tax-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(83,58,183,0.12); }
+  .tax-field .hint { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .btn-calc {
+    width: 100%; height: 40px; background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius); font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s;
+    margin-top: 4px;
+  }
+  .btn-calc:hover { background: var(--accent-text); }
+  .bracket-list { margin-top: 4px; }
+  .bracket-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px;
+  }
+  .bracket-row:last-child { border-bottom: none; }
+  .bracket-row.total-row {
+    border-top: 2px solid var(--border2); margin-top: 4px; padding-top: 14px;
+  }
+  .bracket-label { font-size: 12px; color: var(--text2); }
+  .bracket-range { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .bracket-amount {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500;
+    text-align: right; white-space: nowrap;
+  }
+  .bracket-amount.zero { color: var(--text3); }
+  .bracket-amount.positive { color: var(--accent); }
+  .total-label { font-size: 14px; font-weight: 600; }
+  .total-amount { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; color: var(--accent); }
+  .effective-row {
+    display: flex; justify-content: space-between;
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+  }
+  .effective-label { font-size: 12px; color: var(--text2); }
+  .effective-val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  /* ─── SUMMARY BAR ─── */
+  .summary-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .bar-section { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .bar-label { font-size: 11px; color: var(--text2); }
+  .bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; }
+  .bar-divider { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
+  .progress-wrap { flex: 1; }
+  .progress-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s; }
+
+  /* ─── NOTIFICATION ─── */
+  .notif {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--text); color: var(--bg);
+    padding: 10px 18px; border-radius: 8px; font-size: 13px;
+    transform: translateY(80px); opacity: 0; transition: all 0.25s;
+    pointer-events: none; z-index: 999;
+  }
+  .notif.show { transform: translateY(0); opacity: 1; }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2v6m0 0l-3-3m3 3l3-3M2 12h6m0 0L5 9m3 3L5 15M22 12h-6m0 0l3-3m-3 3l3 3M12 22v-6m0 0l-3 3m3-3l3 3"/></svg>
+      </div>
+      <div>
+        <div class="logo-title">FinBook</div>
+        <div class="logo-sub">บัญชีรายรับรายจ่าย</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="year-badge" id="year-badge">ปี 2568</div>
+      <button class="btn-theme" onclick="toggleTheme()" title="เปลี่ยนธีม">🌙</button>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('entries',this)">📋 รายการ</button>
+    <button class="tab" onclick="switchTab('tax',this)">🧮 คำนวณภาษี</button>
+    <button class="tab" onclick="switchTab('report',this)">📊 รายงาน</button>
+  </div>
+
+  <!-- ═══ TAB: ENTRIES ═══ -->
+  <div id="tab-entries">
+    <!-- SUMMARY CARDS -->
+    <div class="summary-grid">
+      <div class="summary-card s-income">
+        <div class="s-label">รายรับรวม</div>
+        <div class="s-value" id="c-income">฿0</div>
+      </div>
+      <div class="summary-card s-expense">
+        <div class="s-label">รายจ่ายรวม</div>
+        <div class="s-value" id="c-expense">฿0</div>
+      </div>
+      <div class="summary-card s-net">
+        <div class="s-label">ยอดคงเหลือ</div>
+        <div class="s-value" id="c-net">฿0</div>
+      </div>
+      <div class="summary-card s-tax">
+        <div class="s-label">ประมาณการภาษี</div>
+        <div class="s-value" id="c-tax">฿0</div>
+      </div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="form-card">
+      <div class="form-card-title">เพิ่มรายการใหม่</div>
+      <div class="form-row">
+        <div class="fg">
+          <label>รายการ / คำอธิบาย</label>
+          <input type="text" id="f-desc" placeholder="เช่น ค่าเช่า, รายได้จากการขาย..." />
+        </div>
+        <div class="fg">
+          <label>จำนวนเงิน (บาท)</label>
+          <input type="number" id="f-amount" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <div class="fg">
+          <label>ประเภท</label>
+          <select id="f-type">
+            <option value="income">💚 รายรับ</option>
+            <option value="expense">🔴 รายจ่าย</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>หมวดหมู่</label>
+          <select id="f-cat">
+            <option value="ทั่วไป">ทั่วไป</option>
+            <option value="เงินเดือน">เงินเดือน</option>
+            <option value="ธุรกิจ">ธุรกิจ</option>
+            <option value="ลงทุน">ลงทุน</option>
+            <option value="อาหาร">อาหาร</option>
+            <option value="ที่อยู่อาศัย">ที่อยู่อาศัย</option>
+            <option value="ยานพาหนะ">ยานพาหนะ</option>
+            <option value="สุขภาพ">สุขภาพ</option>
+            <option value="บันเทิง">บันเทิง</option>
+            <option value="การศึกษา">การศึกษา</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <button class="btn-add" onclick="addEntry()">+ เพิ่ม</button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+      <div class="table-top">
+        <div class="table-title">รายการทั้งหมด <span id="count-badge" style="font-size:11px;color:var(--text2);font-weight:400;margin-left:4px"></span></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input class="search-input" id="search-input" placeholder="ค้นหา..." oninput="render()" />
+          <div class="filter-pills">
+            <button class="pill active" onclick="setFilter('all',this)">ทั้งหมด</button>
+            <button class="pill" onclick="setFilter('income',this)">รายรับ</button>
+            <button class="pill" onclick="setFilter('expense',this)">รายจ่าย</button>
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>รายการ</th>
+              <th>หมวดหมู่</th>
+              <th>ประเภท</th>
+              <th style="text-align:right">จำนวนเงิน</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn-export" onclick="clearAll()">🗑 ล้างข้อมูลทั้งหมด</button>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: TAX ═══ -->
+  <div id="tab-tax" class="hidden">
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px">
+        💡 คำนวณภาษีเงินได้บุคคลธรรมดา (ภ.ง.ด. 90/91) ตามอัตราของกรมสรรพากร ปีภาษี 2567–2568
+      </div>
+    </div>
+    <div class="tax-grid">
+      <div class="tax-input-card">
+        <div class="card-title">ข้อมูลรายได้และค่าลดหย่อน</div>
+        <div class="tax-field">
+          <label>รายได้รวมทั้งปี (บาท)</label>
+          <input type="number" id="t-income" placeholder="0" min="0" />
+          <div class="hint">ดึงจากรายรับรวม: <span id="hint-income" style="color:var(--accent);cursor:pointer;font-weight:500" onclick="pullIncome()">฿0 (คลิกเพื่อดึง)</span></div>
+        </div>
+        <div class="tax-field">
+          <label>ค่าลดหย่อนส่วนตัว (บาท)</label>
+          <input type="number" id="t-personal" value="60000" min="0" />
+          <div class="hint">ค่าลดหย่อนส่วนตัว 60,000 บาท (ค่าเริ่มต้น)</div>
+        </div>
+        <div class="tax-field">
+          <label>ค่าลดหย่อนอื่นๆ (บาท)</label>
+          <input type="number" id="t-other" value="0" min="0" />
+          <div class="hint">เช่น ประกันชีวิต, RMF, LTF, ดอกเบี้ยบ้าน</div>
+        </div>
+        <div class="tax-field">
+          <label>ประเภทรายได้ (สำหรับหักค่าใช้จ่าย)</label>
+          <select id="t-inctype" style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai',sans-serif;font-size:13px;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px">
+            <option value="40.1">มาตรา 40(1) เงินเดือน — หัก 50% สูงสุด 100,000 บาท</option>
+            <option value="40.2">มาตรา 40(2) รับจ้าง — หัก 50% สูงสุด 100,000 บาท</option>
+            <option value="40.6">มาตรา 40(6) วิชาชีพอิสระ — หัก 60% สูงสุด 300,000 บาท</option>
+            <option value="40.8">มาตรา 40(8) ธุรกิจทั่วไป — หัก 60% สูงสุด 300,000 บาท</option>
+          </select>
+        </div>
+        <button class="btn-calc" onclick="calcTax()">คำนวณภาษี</button>
+      </div>
+
+      <div class="tax-result-card">
+        <div class="card-title">ผลการคำนวณ</div>
+        <div class="bracket-list" id="bracket-list">
+          <div style="color:var(--text3);font-size:13px;text-align:center;padding:40px 0">กรอกข้อมูลและกด "คำนวณภาษี"</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: REPORT ═══ -->
+  <div id="tab-report" class="hidden">
+    <div class="summary-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="summary-card s-income">
+        <div class="s-label">รายรับทั้งหมด</div>
+        <div class="s-value" id="r-income">฿0</div>
+      </div>
+      <div class="summary-card s-expense">
+        <div class="s-label">รายจ่ายทั้งหมด</div>
+        <div class="s-value" id="r-expense">฿0</div>
+      </div>
+      <div class="summary-card s-net">
+        <div class="s-label">กำไรสุทธิ</div>
+        <div class="s-value" id="r-net">฿0</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="report-grids">
+      <div class="table-card">
+        <div class="table-top"><div class="table-title">รายรับตามหมวดหมู่</div></div>
+        <div id="cat-income-list" style="padding:8px 0"></div>
+      </div>
+      <div class="table-card">
+        <div class="table-top"><div class="table-title">รายจ่ายตามหมวดหมู่</div></div>
+        <div id="cat-expense-list" style="padding:8px 0"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<script>
+let entries = JSON.parse(localStorage.getItem('finbook_entries') || '[]');
+let currentFilter = 'all';
+
+const now = new Date();
+const buddhistYear = now.getFullYear() + 543;
+document.getElementById('year-badge').textContent = 'ปี ' + buddhistYear;
+
+function save() {
+  localStorage.setItem('finbook_entries', JSON.stringify(entries));
+}
+
+function fmt(n) {
+  return '฿' + Math.abs(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtShort(n) {
+  if (n >= 1000000) return '฿' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '฿' + (n/1000).toFixed(1) + 'K';
+  return '฿' + n.toLocaleString('th-TH');
+}
+
+function showNotif(msg) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function addEntry() {
+  const desc = document.getElementById('f-desc').value.trim();
+  const amount = parseFloat(document.getElementById('f-amount').value);
+  const type = document.getElementById('f-type').value;
+  const cat = document.getElementById('f-cat').value;
+  if (!desc) { showNotif('⚠ กรุณากรอกรายการ'); return; }
+  if (isNaN(amount) || amount <= 0) { showNotif('⚠ กรุณากรอกจำนวนเงินที่ถูกต้อง'); return; }
+
+  const d = new Date();
+  entries.push({
+    id: Date.now(),
+    desc, amount, type, cat,
+    date: d.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+    ts: d.getTime()
+  });
+  save();
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-amount').value = '';
+  render();
+  showNotif(type === 'income' ? '✓ เพิ่มรายรับเรียบร้อย' : '✓ เพิ่มรายจ่ายเรียบร้อย');
+}
+
+function deleteEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  save(); render();
+  showNotif('🗑 ลบรายการแล้ว');
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function calcEstTax(gross) {
+  const expense = Math.min(gross * 0.5, 100000);
+  const net = Math.max(0, gross - expense - 60000);
+  const brackets = [150000,300000,500000,750000,1000000,2000000];
+  const rates = [0,0.05,0.10,0.15,0.20,0.25,0.35];
+  let tax = 0, prev = 0;
+  for (let i = 0; i < rates.length; i++) {
+    const cap = brackets[i] || Infinity;
+    const taxable = Math.max(0, Math.min(net, cap) - prev);
+    tax += taxable * rates[i];
+    prev = cap;
+    if (net <= cap) break;
+  }
+  return tax;
+}
+
+function render() {
+  const totalIncome = entries.filter(e => e.type === 'income').reduce((s,e) => s+e.amount, 0);
+  const totalExpense = entries.filter(e => e.type === 'expense').reduce((s,e) => s+e.amount, 0);
+  const net = totalIncome - totalExpense;
+  const tax = calcEstTax(totalIncome);
+
+  document.getElementById('c-income').textContent = fmt(totalIncome);
+  document.getElementById('c-expense').textContent = fmt(totalExpense);
+  const netEl = document.getElementById('c-net');
+  netEl.textContent = (net < 0 ? '-' : '') + fmt(net);
+  netEl.style.color = net >= 0 ? 'var(--income)' : 'var(--expense)';
+  document.getElementById('c-tax').textContent = fmt(tax);
+  document.getElementById('hint-income').textContent = fmt(totalIncome) + ' (คลิกเพื่อดึง)';
+
+  // Report tab
+  document.getElementById('r-income').textContent = fmt(totalIncome);
+  document.getElementById('r-expense').textContent = fmt(totalExpense);
+  const rNet = document.getElementById('r-net');
+  rNet.textContent = (net < 0 ? '-' : '') + fmt(net);
+  rNet.style.color = net >= 0 ? 'var(--income)' : 'var(--expense)';
+
+  // Category breakdown
+  renderCatList('income', totalIncome);
+  renderCatList('expense', totalExpense);
+
+  // Table
+  const search = (document.getElementById('search-input').value || '').toLowerCase();
+  let filtered = currentFilter === 'all' ? entries : entries.filter(e => e.type === currentFilter);
+  if (search) filtered = filtered.filter(e => e.desc.toLowerCase().includes(search) || e.cat.toLowerCase().includes(search));
+  filtered = [...filtered].sort((a,b) => b.ts - a.ts);
+
+  document.getElementById('count-badge').textContent = '(' + filtered.length + ' รายการ)';
+
+  const tbody = document.getElementById('tbody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">ไม่มีรายการ</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => `
+    <tr>
+      <td class="td-mono" style="color:var(--text2);font-size:12px">${e.date}</td>
+      <td>${e.desc}</td>
+      <td><span class="category-tag">${e.cat||'ทั่วไป'}</span></td>
+      <td><span class="badge ${e.type}">${e.type==='income'?'รายรับ':'รายจ่าย'}</span></td>
+      <td class="td-mono" style="text-align:right;color:${e.type==='income'?'var(--income)':'var(--expense)'};font-weight:500">
+        ${e.type==='expense'?'-':''}${fmt(e.amount)}
+      </td>
+      <td><button class="btn-del" onclick="deleteEntry(${e.id})" title="ลบ">×</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderCatList(type, total) {
+  const cats = {};
+  entries.filter(e => e.type === type).forEach(e => {
+    cats[e.cat] = (cats[e.cat] || 0) + e.amount;
+  });
+  const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+  const listEl = document.getElementById('cat-' + type + '-list');
+  if (sorted.length === 0) {
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">ไม่มีข้อมูล</div>';
+    return;
+  }
+  listEl.innerHTML = sorted.map(([cat, amt]) => {
+    const pct = total > 0 ? (amt/total*100) : 0;
+    return `<div style="padding:8px 18px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:13px">${cat}</span>
+        <span class="td-mono" style="font-size:12px;color:${type==='income'?'var(--income)':'var(--expense)'}">${fmt(amt)}</span>
+      </div>
+      <div style="height:4px;background:var(--surface2);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct.toFixed(1)}%;background:${type==='income'?'var(--income)':'var(--expense)'};border-radius:2px"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calcTax() {
+  const gross = parseFloat(document.getElementById('t-income').value) || 0;
+  const personal = parseFloat(document.getElementById('t-personal').value) || 0;
+  const other = parseFloat(document.getElementById('t-other').value) || 0;
+  const inctype = document.getElementById('t-inctype').value;
+
+  let expenseRate = 0.5, expenseCap = 100000;
+  if (inctype === '40.6' || inctype === '40.8') { expenseRate = 0.6; expenseCap = 300000; }
+  const expense = Math.min(gross * expenseRate, expenseCap);
+  const netIncome = Math.max(0, gross - expense - personal - other);
+
+  const brackets = [
+    { label: '0 – 150,000 บาท', rate: 0, max: 150000 },
+    { label: '150,001 – 300,000 บาท', rate: 0.05, max: 300000 },
+    { label: '300,001 – 500,000 บาท', rate: 0.10, max: 500000 },
+    { label: '500,001 – 750,000 บาท', rate: 0.15, max: 750000 },
+    { label: '750,001 – 1,000,000 บาท', rate: 0.20, max: 1000000 },
+    { label: '1,000,001 – 2,000,000 บาท', rate: 0.25, max: 2000000 },
+    { label: '2,000,001 บาท ขึ้นไป', rate: 0.35, max: Infinity },
+  ];
+
+  let totalTax = 0, prev = 0;
+  const rows = brackets.map(b => {
+    const taxable = Math.max(0, Math.min(netIncome, b.max) - prev);
+    const tax = taxable * b.rate;
+    totalTax += tax;
+    prev = b.max;
+    return { ...b, taxable, tax };
+  });
+
+  const effRate = gross > 0 ? (totalTax / gross * 100).toFixed(2) : 0;
+  const rateLabel = (r) => r === 0 ? 'ยกเว้น' : (r*100).toFixed(0) + '%';
+
+  const html = `
+    <div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text2)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>รายได้รวม</span><span class="td-mono">${fmt(gross)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>หักค่าใช้จ่าย (${(expenseRate*100).toFixed(0)}%, สูงสุด ${fmtShort(expenseCap)})</span><span class="td-mono">-${fmt(expense)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>หักค่าลดหย่อนส่วนตัว</span><span class="td-mono">-${fmt(personal)}</span></div>
+      ${other > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>หักค่าลดหย่อนอื่นๆ</span><span class="td-mono">-${fmt(other)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;font-weight:500;color:var(--text);border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>เงินได้สุทธิ</span><span class="td-mono" style="color:var(--accent)">${fmt(netIncome)}</span></div>
+    </div>
+    ${rows.map(r => `
+      <div class="bracket-row">
+        <div>
+          <div class="bracket-label">${rateLabel(r.rate)}</div>
+          <div class="bracket-range">${r.label}</div>
+          ${r.taxable > 0 ? `<div class="bracket-range">${fmt(r.taxable)} × ${(r.rate*100).toFixed(0)}%</div>` : ''}
+        </div>
+        <div class="bracket-amount ${r.tax === 0 ? 'zero' : 'positive'}">${fmt(r.tax)}</div>
+      </div>
+    `).join('')}
+    <div class="bracket-row total-row">
+      <div class="total-label">ภาษีที่ต้องชำระ</div>
+      <div class="total-amount">${fmt(totalTax)}</div>
+    </div>
+    <div class="effective-row">
+      <div class="effective-label">Effective Rate (อัตราภาษีแท้จริง)</div>
+      <div class="effective-val">${effRate}%</div>
+    </div>
+  `;
+  document.getElementById('bracket-list').innerHTML = html;
+  showNotif('✓ คำนวณภาษีเรียบร้อย');
+}
+
+function pullIncome() {
+  const totalIncome = entries.filter(e => e.type === 'income').reduce((s,e) => s+e.amount, 0);
+  document.getElementById('t-income').value = totalIncome.toFixed(2);
+  calcTax();
+  showNotif('✓ ดึงรายรับรวมเรียบร้อย');
+}
+
+function switchTab(tab, el) {
+  ['entries','tax','report'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  render();
+}
+
+function exportCSV() {
+  if (entries.length === 0) { showNotif('⚠ ไม่มีข้อมูลให้ export'); return; }
+  const header = 'วันที่,รายการ,หมวดหมู่,ประเภท,จำนวนเงิน\n';
+  const rows = entries.map(e =>
+    `${e.date},"${e.desc}",${e.cat},${e.type==='income'?'รายรับ':'รายจ่าย'},${e.amount}`
+  ).join('\n');
+  const blob = new Blob(['\uFEFF'+header+rows], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'finbook_' + Date.now() + '.csv';
+  a.click();
+  showNotif('✓ Export CSV สำเร็จ');
+}
+
+function clearAll() {
+  if (!confirm('ลบรายการทั้งหมด? ไม่สามารถกู้คืนได้')) return;
+  entries = [];
+  save(); render();
+  showNotif('🗑 ล้างข้อมูลทั้งหมดแล้ว');
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+  document.querySelector('.btn-theme').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('finbook_theme', isDark ? '' : 'dark');
+}
+
+// Init theme
+const savedTheme = localStorage.getItem('finbook_theme');
+if (savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.querySelector('.btn-theme').textContent = '☀️';
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.id === 'f-amount') addEntry();
+});
+
+render();
+</script>
+</body>
+</html>
